@@ -1,3 +1,6 @@
+import org.gradle.api.publish.PublishingExtension
+import org.gradle.plugins.signing.SigningExtension
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.kotlin.jvm) apply false
@@ -10,9 +13,6 @@ allprojects {
 
     apply(plugin = "maven-publish")
 }
-
-import org.gradle.api.publish.PublishingExtension
-import org.gradle.plugins.signing.SigningExtension
 
 // KMP and java-gradle-plugin modules self-publish; plain java modules need an explicit publication
 subprojects {
