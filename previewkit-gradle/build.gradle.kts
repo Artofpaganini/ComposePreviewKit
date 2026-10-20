@@ -1,4 +1,6 @@
 import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
+import org.gradle.plugins.signing.Sign
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -62,4 +64,8 @@ publishing {
             }
         }
     }
+}
+
+tasks.withType<PublishToMavenRepository>().configureEach {
+    dependsOn(tasks.withType<Sign>())
 }

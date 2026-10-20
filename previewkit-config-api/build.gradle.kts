@@ -54,3 +54,7 @@ java {
 kotlin {
     jvmToolchain(21)
 }
+
+tasks.withType<PublishToMavenRepository>().configureEach {
+    dependsOn(tasks.withType<Sign>())
+}

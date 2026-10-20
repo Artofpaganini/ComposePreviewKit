@@ -76,3 +76,7 @@ kotlin {
         }
     }
 }
+
+tasks.withType<PublishToMavenRepository>().configureEach {
+    dependsOn(tasks.withType<Sign>())
+}
