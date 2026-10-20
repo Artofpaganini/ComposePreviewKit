@@ -66,8 +66,8 @@ publishing {
 }
 
 signing {
-    val signingKey = providers.environmentVariable("PREVIEWKIT_SIGNING_KEY")
-    val signingPassword = providers.environmentVariable("PREVIEWKIT_SIGNING_PASSWORD")
+    val signingKey = providers.environmentVariable("ORG_GRADLE_PROJECT_signingKey")
+    val signingPassword = providers.environmentVariable("ORG_GRADLE_PROJECT_signingPassword")
     if (signingKey.isPresent) {
         useInMemoryPgpKeys(signingKey.get(), signingPassword.orNull)
         sign(publishing.publications)
