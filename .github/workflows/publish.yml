@@ -17,6 +17,14 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: gradle/actions/setup-gradle@v4
+      - name: Import signing key
+        env:
+          PREVIEWKIT_SIGNING_KEY: ${{ secrets.PREVIEWKIT_SIGNING_KEY }}
+        run: |
+          echo "$PREVIEWKIT_SIGNING_KEY" | gpg --batch --import
+          mkdir -p ~/.gnupg
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          gpgconf --kill gpg-agent || true
       - name: Publish
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.CENTRAL_USERNAME }}
