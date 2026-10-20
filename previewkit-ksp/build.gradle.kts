@@ -15,9 +15,6 @@ val DEVELOPER_NAME = "Viktar Dabrou"
     mavenPublishing {
         coordinates("io.github.artofpaganini", "previewkit-ksp", "0.1.0")
         publishToMavenCentral(automaticRelease = true)
-        if (providers.environmentVariable("ORG_GRADLE_PROJECT_signingKey").isPresent) {
-            signAllPublications()
-        }
         pom {
             name = "PreviewKit KSP Processor"
             description = "KSP processor generating Compose preview factories and wrappers"

@@ -11,6 +11,9 @@ allprojects {
     apply(plugin = "maven-publish")
 }
 
+import org.gradle.api.publish.PublishingExtension
+import org.gradle.plugins.signing.SigningExtension
+
 // KMP and java-gradle-plugin modules self-publish; plain java modules need an explicit publication
 subprojects {
     afterEvaluate {
@@ -18,6 +21,17 @@ subprojects {
         if (publishing.publications.isEmpty()) {
             publishing.publications.create<MavenPublication>("previewkitMaven") {
                 from(components.findByName("java"))
+            }
+        }
+
+        val signingKey = System.getenv("ORG_GRADLE_PROJECT_signingKey")
+            ?: providers.gradleProperty("signingKey").orNull
+        if (signingKey != null) {
+            val signingPassword = System.getenv("ORG_GRADLE_PROJECT_signingPassword")
+                ?: providers.gradleProperty("signingPassword").orNull
+            extensions.configure(SigningExtension::class.java) {
+                useInMemoryPgpKeys(signingKey, signingPassword)
+                sign(publishing.publications)
             }
         }
     }

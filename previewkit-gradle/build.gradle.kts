@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     `java-gradle-plugin`
     `maven-publish`
-    signing
 }
 
 val kotlinVersion = libs.versions.kotlin.get()
@@ -62,14 +61,5 @@ publishing {
                 developerConnection = "scm:git:github.com/ArtofPaganini/ComposePreviewKit.git"
             }
         }
-    }
-}
-
-signing {
-    val signingKey = providers.environmentVariable("ORG_GRADLE_PROJECT_signingKey")
-    val signingPassword = providers.environmentVariable("ORG_GRADLE_PROJECT_signingPassword")
-    if (signingKey.isPresent) {
-        useInMemoryPgpKeys(signingKey.get(), signingPassword.orNull)
-        sign(publishing.publications)
     }
 }
