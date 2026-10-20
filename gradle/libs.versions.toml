@@ -10,7 +10,7 @@ agp = "9.4.1"
 compileSdk = "37"
 minSdk = "30"
 iosMinDeploymentTarget = "15.0"
-vanniktech-publish = "0.30.0"
+vanniktech-publish = "0.37.0"
 
 [libraries]
 ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
