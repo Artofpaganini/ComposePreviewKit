@@ -1,0 +1,14 @@
+# Build outputs
+build/
+.gradle/
+.kotlin/
+
+# IntelliJ Platform Gradle Plugin artifacts (previewkit-idea runIde/local platform)
+.intellijPlatform/
+
+# Local machine config
+local.properties
+
+# IDE
+*.iml
+.idea/
