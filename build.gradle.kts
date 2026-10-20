@@ -8,7 +8,7 @@ plugins {
 }
 
 allprojects {
-    group = "io.github.artofpaganini.previewkit"
+    group = "io.github.artofpaganini"
     version = "0.1.0"
 
     apply(plugin = "maven-publish")
@@ -18,12 +18,6 @@ allprojects {
 subprojects {
     afterEvaluate {
         val publishing = extensions.findByType(PublishingExtension::class.java) ?: return@afterEvaluate
-        if (publishing.publications.isEmpty()) {
-            publishing.publications.create<MavenPublication>("previewkitMaven") {
-                from(components.findByName("java"))
-            }
-        }
-
         val signingKey = System.getenv("ORG_GRADLE_PROJECT_signingKey")
             ?: providers.gradleProperty("signingKey").orNull
         if (signingKey != null) {
