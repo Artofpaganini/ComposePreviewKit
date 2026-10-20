@@ -47,16 +47,62 @@ internal class SurfaceEmitter(
     internal fun emit(target: WithPreviewTarget) {
         val fnSimpleName = target.function.simpleName.asString()
 
+        val optInAnnotation = buildOptInAnnotation(collectOptInMarkers(target))
+
         if (catalog.isEmpty()) {
             logger.warn(
-                "SurfaceEmitter: '$fnSimpleName' — catalog empty, skipping (no multipreview annotations found). " +
-                    "Ensure @PreviewSurface markers are on the function or set ksp-arg 'previewkit.previewPackages'.",
+                "SurfaceEmitter: '$fnSimpleName' — catalog empty (no registry), " +
+                    "generating a plain @Preview wrapper instead",
             )
+            emitFallback(target, optInAnnotation)
             return
         }
 
-        val optInAnnotation = buildOptInAnnotation(collectOptInMarkers(target))
         emitUnifiedFile(target, optInAnnotation)
+    }
+
+    /** Zero-config mode: no registry configured - generate a single plain @Preview wrapper. */
+    private fun emitFallback(target: WithPreviewTarget, optInAnnotation: AnnotationSpec?) {
+        val fnSimpleName = target.function.simpleName.asString()
+        val packageName = target.function.packageName.asString()
+        val fileName = "${fnSimpleName}Preview"
+        val argsCode = buildArgsCode(target = target, wrapperName = fileName) ?: return
+        val bodyCode = buildRawBodyCode(target, target.variant, argsCode)
+        val usedNames = mutableSetOf<String>()
+        val functionName = buildUniqueName("${fnSimpleName}Preview", usedNames)
+
+        val funSpec = FunSpec.builder(functionName)
+            .addModifiers(KModifier.PRIVATE)
+            .addAnnotation(
+                AnnotationSpec.builder(PREVIEW_CLASS_NAME)
+                    .addMember("showBackground = true")
+                    .build(),
+            )
+            .addAnnotation(AnnotationSpec.builder(COMPOSABLE_CLASS_NAME).build())
+            .apply { optInAnnotation?.let(::addAnnotation) }
+            .addCode(bodyCode)
+            .build()
+
+        val containingFile = target.function.containingFile
+        val dependencies = if (containingFile != null) {
+            Dependencies(aggregating = false, containingFile)
+        } else {
+            Dependencies(aggregating = false)
+        }
+
+        val outputStream = codeGenerator.createNewFile(
+            dependencies = dependencies,
+            packageName = packageName,
+            fileName = fileName,
+            extensionName = "kt",
+        )
+        outputStream.bufferedWriter().use { writer ->
+            FileSpec.builder(packageName, fileName)
+                .addFunction(funSpec)
+                .build()
+                .writeTo(writer)
+        }
+        logger.logging("SurfaceEmitter: generated fallback '$fileName' in '$packageName'")
     }
 
     /**
