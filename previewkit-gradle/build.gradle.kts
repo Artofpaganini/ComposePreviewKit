@@ -1,12 +1,18 @@
-import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 import org.gradle.plugins.signing.Sign
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
     `java-gradle-plugin`
-    `maven-publish`
 }
+
+private val POM_URL = "https://github.com/ArtofPaganini/ComposePreviewKit"
+private val POM_SCM_CONNECTION = "scm:git:github.com/ArtofPaganini/ComposePreviewKit.git"
+private val POM_SCM_URL = "https://github.com/ArtofPaganini/ComposePreviewKit/tree/master"
+private val LICENSE_NAME = "Apache-2.0"
+private val LICENSE_URL = "https://www.apache.org/licenses/LICENSE-2.0"
+private val DEVELOPER_ID = "artofpaganini"
+private val DEVELOPER_NAME = "Viktar Dabrou"
 
 val kotlinVersion = libs.versions.kotlin.get()
 val kspVersion = libs.versions.ksp.get()
@@ -26,6 +32,8 @@ gradlePlugin {
 }
 
 java {
+    withSourcesJar()
+    withJavadocJar()
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
 }
@@ -69,3 +77,4 @@ publishing {
 tasks.withType<PublishToMavenRepository>().configureEach {
     dependsOn(tasks.withType<Sign>())
 }
+

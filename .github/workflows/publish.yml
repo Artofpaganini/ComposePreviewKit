@@ -25,6 +25,24 @@ jobs:
           mkdir -p ~/.gnupg
           echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
           gpgconf --kill gpg-agent || true
+      - name: Publish gradle plugin via Central bundle upload
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+        run: |
+          ./gradlew :previewkit-gradle:publishToMavenLocal
+          ROOT=~/.m2/repository
+          STAGE=/tmp/bundle/io/github/artofpaganini/previewkit-gradle/0.1.0
+          MARKER=/tmp/bundle/com/previewkit/com.previewkit.gradle.plugin/0.1.0
+          mkdir -p "$STAGE" "$MARKER"
+          cp $ROOT/io/github/artofpaganini/previewkit-gradle/0.1.0/* "$STAGE"/
+          cp $ROOT/com/previewkit/com.previewkit.gradle.plugin/0.1.0/* "$MARKER"/
+          cd /tmp/bundle
+          zip -r ../previewkit-gradle-bundle.zip .
+          curl --fail-with-body -X POST \
+            "https://central.sonatype.com/api/v1/component/upload?name=previewkit-gradle&publishingType=AUTOMATIC" \
+            -u "$CENTRAL_USERNAME:$CENTRAL_PASSWORD" \
+            -F "bundle=@../previewkit-gradle-bundle.zip"
       - name: Publish
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.CENTRAL_USERNAME }}
