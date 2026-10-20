@@ -28,7 +28,7 @@ subprojects {
             ?: providers.gradleProperty("signingKey").orNull
         if (signingKey != null) {
             val signingPassword = System.getenv("ORG_GRADLE_PROJECT_signingPassword")
-                ?: providers.gradleProperty("signingPassword").orNull
+                ?: providers.gradleProperty("signingPassword").orNull ?: ""
             val signingKeyId = (System.getenv("ORG_GRADLE_PROJECT_signingKeyId")
                 ?: providers.gradleProperty("signingKeyId").orNull)?.takeIf { it.isNotBlank() }
             apply(plugin = "signing")
