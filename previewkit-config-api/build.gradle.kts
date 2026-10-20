@@ -14,8 +14,8 @@ val DEVELOPER_NAME = "Viktar Dabrou"
 
     mavenPublishing {
         coordinates("io.github.artofpaganini", "previewkit-config-api", "0.1.0")
-        publishToMavenCentral()
-        if (System.getenv("PREVIEWKIT_SIGNING_KEY") != null) {
+        publishToMavenCentral(automaticRelease = true)
+        if (providers.environmentVariable("ORG_GRADLE_PROJECT_signingKey").isPresent) {
             signAllPublications()
         }
         pom {
