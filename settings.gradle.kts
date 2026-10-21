@@ -37,3 +37,6 @@ include(":previewkit-annotations")
 include(":previewkit-config-api")
 include(":previewkit-ksp")
 include(":previewkit-gradle")
+if (System.getenv("CI") == null || System.getenv("PREVIEWKIT_RELEASE") == "true") {
+    include(":previewkit-idea")
+}

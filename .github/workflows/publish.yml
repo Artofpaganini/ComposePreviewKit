@@ -39,9 +39,10 @@ jobs:
           cp $ROOT/com/previewkit/com.previewkit.gradle.plugin/0.1.0/* "$MARKER"/
           cd /tmp/bundle
           zip -r ../previewkit-gradle-bundle.zip .
+          CENTRAL_TOKEN="$(printf '%s:%s' "$CENTRAL_USERNAME" "$CENTRAL_PASSWORD" | base64 | tr -d '\n')"
           curl --fail-with-body -X POST \
-            "https://central.sonatype.com/api/v1/component/upload?name=previewkit-gradle&publishingType=AUTOMATIC" \
-            -u "$CENTRAL_USERNAME:$CENTRAL_PASSWORD" \
+            "https://central.sonatype.com/api/v1/publisher/upload?name=previewkit-gradle&publishingType=AUTOMATIC" \
+            --header "Authorization: Bearer $CENTRAL_TOKEN" \
             -F "bundle=@../previewkit-gradle-bundle.zip"
       - name: Publish
         env:

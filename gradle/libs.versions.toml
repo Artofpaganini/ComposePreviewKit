@@ -11,6 +11,8 @@ compileSdk = "37"
 minSdk = "30"
 iosMinDeploymentTarget = "15.0"
 vanniktech-publish = "0.37.0"
+intellij-platform-gradle-plugin = "2.19.0"
+intellij-community = "2024.3.7.1"
 
 [libraries]
 ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
@@ -25,3 +27,4 @@ android-kmp-library = { id = "com.android.kotlin.multiplatform.library", version
 compose = { id = "org.jetbrains.compose", version.ref = "compose" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+intellij-platform = { id = "org.jetbrains.intellij.platform", version.ref = "intellij-platform-gradle-plugin" }

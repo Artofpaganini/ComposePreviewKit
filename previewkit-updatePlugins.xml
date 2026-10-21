@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugins>
+    <plugin
+        id="com.previewkit.idea"
+        name="PreviewKit"
+        version="0.1.1"
+        url="https://raw.githubusercontent.com/Artofpaganini/ComposePreviewKit/master/releases/previewkit-idea-0.1.1.zip">
+        <idea-version since-build="243" until-build="299.*"/>
+        <depends>com.intellij.modules.platform</depends>
+        <depends>org.jetbrains.kotlin</depends>
+    </plugin>
+</plugins>
