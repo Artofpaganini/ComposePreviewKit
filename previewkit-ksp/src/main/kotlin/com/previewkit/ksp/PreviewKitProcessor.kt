@@ -10,6 +10,7 @@ import com.previewkit.ksp.emit.FunctionEmitter
 import com.previewkit.ksp.emit.SurfaceEmitter
 import com.previewkit.ksp.emit.loadArgProviders
 import com.previewkit.ksp.faker.loadWords
+import com.previewkit.ksp.manifest.UnsupportedManifestSink
 import com.previewkit.ksp.resolve.KSP_ARG_REGISTRY
 import com.previewkit.ksp.resolve.ModelCollector
 import com.previewkit.ksp.resolve.declarationFqn
@@ -29,6 +30,7 @@ private const val KSP_ARG_NAME_SUFFIXES_KEY = "previewkit.nameSuffixes"
 private const val KSP_ARG_COLLECTION_SIZE = "previewkit.collectionSize"
 private const val KSP_ARG_PROVIDER_VARIANTS = "previewkit.providerVariants"
 private const val KSP_ARG_STRICT = "previewkit.strict"
+private const val KSP_ARG_UNSUPPORTED_STUB = "previewkit.unsupportedStub"
 private const val DEFAULT_COLLECTION_SIZE = 2
 private const val DEFAULT_PROVIDER_VARIANTS = 3
 
@@ -75,7 +77,8 @@ internal class PreviewKitProcessor(
             else -> requestedMode
         }
 
-        val targets = if (gateEnabled) WithPreviewCollector(logger).collect(resolver) else emptyList()
+        val manifestSink = UnsupportedManifestSink()
+        val targets = if (gateEnabled) WithPreviewCollector(logger, manifestSink).collect(resolver) else emptyList()
 
         val models = ModelCollector(logger).collect(resolver, targets)
 
@@ -147,11 +150,15 @@ internal class PreviewKitProcessor(
             namePrefix = namePrefix,
             nameSuffixes = nameSuffixes,
             strict = options[KSP_ARG_STRICT] == "true",
+            unsupportedStub = options[KSP_ARG_UNSUPPORTED_STUB] != "false",
+            manifestSink = manifestSink,
         )
 
         for (target in targets) {
             surfaceEmitter.emit(target)
         }
+
+        manifestSink.writeTo(codeGenerator)
 
         return emptyList()
     }

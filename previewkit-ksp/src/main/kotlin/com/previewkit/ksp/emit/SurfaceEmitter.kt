@@ -7,6 +7,7 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSValueParameter
 import com.previewkit.ksp.context.KspProviderContext
+import com.previewkit.ksp.manifest.UnsupportedManifestSink
 import com.previewkit.ksp.resolve.PreviewAnnotationRef
 import com.previewkit.ksp.resolve.TypeOverrideSource
 import com.previewkit.ksp.resolve.declarationFqn
@@ -28,7 +29,12 @@ private val OPT_IN_CLASS_NAME = ClassName("kotlin", "OptIn")
 private val COLUMN_MEMBER = MemberName("androidx.compose.foundation.layout", "Column")
 
 private const val FQN_OPT_IN = "kotlin.OptIn"
+private const val FQN_UNIT = "kotlin.Unit"
 private const val OPT_IN_MARKER_ARG = "markerClass"
+
+private const val LAMBDA_TODO_MESSAGE = "PreviewKit: собери это руками"
+private const val STUB_TODO_PREFIX = "PreviewKit: собери это руками: "
+private const val STUB_COMMENT_FORMAT = "PreviewKit: %L"
 
 internal class SurfaceEmitter(
     private val logger: KSPLogger,
@@ -43,6 +49,8 @@ internal class SurfaceEmitter(
     private val namePrefix: String = "",
     private val nameSuffixes: List<String> = emptyList(),
     private val strict: Boolean = false,
+    private val unsupportedStub: Boolean = false,
+    private val manifestSink: UnsupportedManifestSink,
 ) {
     internal fun emit(target: WithPreviewTarget) {
         val fnSimpleName = target.function.simpleName.asString()
@@ -96,7 +104,7 @@ internal class SurfaceEmitter(
             fileName = fileName,
             extensionName = "kt",
         )
-        outputStream.bufferedWriter().use { writer ->
+        outputStream.bufferedWriter(Charsets.UTF_8).use { writer ->
             FileSpec.builder(packageName, fileName)
                 .addFunction(funSpec)
                 .build()
@@ -194,7 +202,7 @@ internal class SurfaceEmitter(
             fileName = fileName,
             extensionName = "kt",
         )
-        outputStream.bufferedWriter().use { writer -> fileSpec.writeTo(writer) }
+        outputStream.bufferedWriter(Charsets.UTF_8).use { writer -> fileSpec.writeTo(writer) }
         logger.logging("SurfaceEmitter: generated unified '$fileName' in '$packageName' (${catalog.size} catalog entries, ${surfaces.size} surfaces)")
     }
 
@@ -349,63 +357,73 @@ internal class SurfaceEmitter(
         val params = target.function.parameters.toList()
         if (params.isEmpty()) return CodeBlock.of("")
         val code = CodeBlock.builder()
-        val fnSimpleName = target.function.simpleName.asString()
+        val problems = mutableListOf<String>()
         for ((index, param) in params.withIndex()) {
-            if (!appendParam(code, param, index, fnSimpleName, wrapperName)) return null
+            appendParam(code, param, index, target, problems)
         }
-        return code.build()
+        val problem = problems.firstOrNull() ?: return code.build()
+        reportSkip(problem, wrapperName)
+        return null
     }
 
     private fun appendParam(
         code: CodeBlock.Builder,
         param: KSValueParameter,
         index: Int,
-        fnSimpleName: String,
-        wrapperName: String,
-    ): Boolean {
-        return when {
-            param.hasDefault -> true
-            else -> appendRequiredParam(code, param, index, fnSimpleName, wrapperName)
-        }
+        target: WithPreviewTarget,
+        problems: MutableList<String>,
+    ) {
+        if (param.hasDefault) return
+        appendRequiredParam(code, param, index, target, problems)
     }
 
     private fun appendRequiredParam(
         code: CodeBlock.Builder,
         param: KSValueParameter,
         index: Int,
-        fnSimpleName: String,
-        wrapperName: String,
-    ): Boolean {
+        target: WithPreviewTarget,
+        problems: MutableList<String>,
+    ) {
         val paramName = param.name?.asString()
         if (paramName == null) {
-            reportSkip("'$fnSimpleName' has unnamed parameter at index $index", wrapperName)
-            return false
+            val fnSimpleName = target.function.simpleName.asString()
+            manifestSink.recordUnsupportedParameter(
+                sourceFilePath = targetSourceFilePath(target),
+                packageName = target.function.packageName.asString(),
+                functionName = fnSimpleName,
+                paramName = "",
+                typeFqn = typeFqnOf(param.type.resolve()),
+                reason = "unnamed parameter at index $index",
+            )
+            problems += "'$fnSimpleName' has unnamed parameter at index $index"
+            return
         }
         val paramCode = resolveParamCode(
+            code = code,
             param = param,
             paramName = paramName,
             paramIndex = index,
-            fnSimpleName = fnSimpleName,
-            wrapperName = wrapperName,
-        ) ?: return false
+            target = target,
+            problems = problems,
+        ) ?: return
         code.add("%N = ", paramName)
         code.add(paramCode)
         code.add(",\n")
-        return true
     }
 
     @Suppress("ReturnCount")
     private fun resolveParamCode(
+        code: CodeBlock.Builder,
         param: KSValueParameter,
         paramName: String,
         paramIndex: Int,
-        fnSimpleName: String,
-        wrapperName: String,
+        target: WithPreviewTarget,
+        problems: MutableList<String>,
     ): CodeBlock? {
         val resolvedType = param.type.resolve()
 
         if (resolvedType.isFunctionType || resolvedType.isSuspendFunctionType) {
-            return CodeBlock.of("{}")
+            return lambdaBodyCode(resolvedType)
         }
 
         return when (
@@ -419,11 +437,43 @@ internal class SurfaceEmitter(
         ) {
             is ArgumentBuilder.Result.Success -> result.code
             is ArgumentBuilder.Result.Unsupported -> {
-                reportSkip("cannot resolve '$paramName' in '$fnSimpleName' — ${result.reason}", wrapperName)
-                null
+                val fnSimpleName = target.function.simpleName.asString()
+                manifestSink.recordUnsupportedParameter(
+                    sourceFilePath = targetSourceFilePath(target),
+                    packageName = target.function.packageName.asString(),
+                    functionName = fnSimpleName,
+                    paramName = paramName,
+                    typeFqn = typeFqnOf(resolvedType),
+                    reason = result.reason,
+                )
+                if (!unsupportedStub || strict) {
+                    problems += "cannot resolve '$paramName' in '$fnSimpleName' — ${result.reason}"
+                    null
+                } else {
+                    code.addComment(STUB_COMMENT_FORMAT, result.reason)
+                    CodeBlock.of("TODO(%S)", STUB_TODO_PREFIX + result.reason)
+                }
             }
         }
     }
+
+    private fun lambdaBodyCode(functionType: KSType): CodeBlock {
+        val returnType = functionType.arguments.lastOrNull()?.type?.resolve()
+        val isUnitReturn = returnType != null &&
+            typeFqnOf(returnType) == FQN_UNIT &&
+            !returnType.isMarkedNullable
+        return if (isUnitReturn) {
+            CodeBlock.of("{}")
+        } else {
+            CodeBlock.of("{ TODO(%S) }", LAMBDA_TODO_MESSAGE)
+        }
+    }
+
+    private fun targetSourceFilePath(target: WithPreviewTarget): String =
+        target.function.containingFile?.filePath.orEmpty()
+
+    private fun typeFqnOf(type: KSType): String =
+        declarationFqn(type.declaration).orEmpty()
 
     private fun buildCoreName(simpleName: String): String {
         val afterPrefix = if (namePrefix.isNotEmpty()) simpleName.removePrefix(namePrefix) else simpleName
