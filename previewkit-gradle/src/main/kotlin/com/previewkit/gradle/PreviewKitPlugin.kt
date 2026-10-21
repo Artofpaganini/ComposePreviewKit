@@ -27,6 +27,11 @@ private const val COMMON_MAIN_SOURCE_SET = "commonMain"
 private const val PREVIEWS_TASK = "previews"
 private const val PREVIEWS_TASK_GROUP = "preview"
 
+private const val COVERAGE_REPORT_TASK = "previewCoverageReport"
+private const val COVERAGE_REPORT_GROUP = "previewkit"
+private const val COVERAGE_REPORT_DESCRIPTION =
+    "Aggregated @WithPreview coverage: generated wrappers plus unsupported/private manifest records across the repository"
+
 private const val KSP_ARG_GATE_NAME_KEY = "previewkit.gateArgName"
 private const val KSP_ARG_DEFAULT_BOX = "previewkit.defaultBox"
 private const val KSP_ARG_FACTORIES = "previewMock.factories"
@@ -53,6 +58,11 @@ class PreviewKitPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         val extension = target.extensions.create("previewToolkit", PreviewToolkitExtension::class.java)
         applyDefaults(extension)
+
+        target.tasks.register(COVERAGE_REPORT_TASK, PreviewCoverageReportTask::class.java) { task ->
+            task.group = COVERAGE_REPORT_GROUP
+            task.description = COVERAGE_REPORT_DESCRIPTION
+        }
 
         target.pluginManager.apply(KSP_PLUGIN_ID)
 
