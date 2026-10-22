@@ -10,7 +10,7 @@ import com.google.devtools.ksp.symbol.Modifier
 private const val ANNOTATION_PREVIEW_MOCK_FQN = "com.previewkit.annotation.PreviewMock"
 private const val ANNOTATION_PREVIEW_MOCK_IGNORE_FQN = "com.previewkit.annotation.PreviewMockIgnore"
 private const val ANNOTATION_CONSIDER_FQN = "com.previewkit.annotation.ConsiderForPreviewMock"
-private const val MAX_TRANSITIVE_DEPTH = 10
+private const val MAX_TRANSITIVE_DEPTH = 15
 
 internal class ModelCollector(private val logger: KSPLogger) {
 
