@@ -45,17 +45,10 @@ internal class RegeneratePreviewsAction : AnAction() {
 
     private fun regenerate(project: Project, files: Array<VirtualFile>, indicator: ProgressIndicator) {
         val modules = GradleModuleLocator.selectedModules(project, files)
-        val markerTargets = GradleModuleLocator.buildTargets(modules)
-        val buildTargets = markerTargets
-            .ifEmpty { GradleModuleLocator.buildFallbackTargets(project, files) }
-        val mode = when {
-            markerTargets.isNotEmpty() -> "markers"
-            buildTargets.isNotEmpty() -> "fallback"
-            else -> "empty"
-        }
+        val buildTargets = GradleModuleLocator.buildTargets(modules)
         LOG.info(
             "PreviewKit: regenerate files=${files.size} modules=${modules.size} " +
-                "mode=$mode targets=$buildTargets",
+                "targets=$buildTargets",
         )
         if (buildTargets.isEmpty()) {
             showWarning(project, NO_MODULES_MESSAGE)
@@ -63,35 +56,28 @@ internal class RegeneratePreviewsAction : AnAction() {
         }
         for ((buildRootPath, taskNames) in buildTargets) {
             indicator.text = "PreviewKit: running ${taskNames.joinToString(" ")} in ${File(buildRootPath).name}"
-            val result = when (mode) {
-                "fallback" -> runWithSelectorCascade(buildRootPath, indicator)
-                else -> GradleTaskRunner.run(
-                    buildRootPath,
-                    taskNames,
-                    onOutputLine = { line -> indicator.text = "PreviewKit gradle: ${line.take(140)}" },
-                    isCanceled = { indicator.isCanceled },
-                )
-            }
+            val result = runWithModuleCascade(buildRootPath, taskNames, indicator)
             notifyCompletion(project, buildRootPath, result)
             if (result.cancelled) return
         }
         UnsupportedManifestService.getInstance(project).invalidate()
     }
 
-    private fun runWithSelectorCascade(
+    private fun runWithModuleCascade(
         buildRootPath: String,
+        taskNames: List<String>,
         indicator: ProgressIndicator,
     ): GradleRunResult {
         var result = GradleTaskRunner.run(
             buildRootPath,
-            listOf(FALLBACK_TASK_KSP_ANDROID_MAIN),
+            taskNames,
             onOutputLine = { line -> indicator.text = "PreviewKit gradle: ${line.take(140)}" },
             isCanceled = { indicator.isCanceled },
         )
         if (!result.isSuccess && result.failureMessage().contains(NOT_FOUND_MARKER, ignoreCase = true)) {
             result = GradleTaskRunner.run(
                 buildRootPath,
-                listOf(FALLBACK_TASK_KSP_DEBUG_KOTLIN),
+                taskNames.map { taskName -> taskName.substringBeforeLast(':') + ":" + DEBUG_FALLBACK_TASK },
                 onOutputLine = { line -> indicator.text = "PreviewKit gradle: ${line.take(140)}" },
                 isCanceled = { indicator.isCanceled },
             )
@@ -147,7 +133,6 @@ internal class RegeneratePreviewsAction : AnAction() {
         const val ALREADY_RUNNING_MESSAGE: String =
             "PreviewKit task is already running. Wait for it to finish."
         const val NOT_FOUND_MARKER: String = "not found"
-        const val FALLBACK_TASK_KSP_ANDROID_MAIN: String = "kspAndroidMain"
-        const val FALLBACK_TASK_KSP_DEBUG_KOTLIN: String = "kspDebugKotlin"
+        const val DEBUG_FALLBACK_TASK: String = "kspDebugKotlin"
     }
 }

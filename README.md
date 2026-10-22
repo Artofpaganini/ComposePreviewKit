@@ -99,12 +99,12 @@ IntelliJ Platform 243-299 линейки):
 - гаттер-иконка у `@WithPreview`-composable -> переход к сгенерированному `<Name>Preview.kt`
   (ищется в `build/generated/ksp/android/androidMain/kotlin` и
   `build/generated/ksp/metadata/commonMain/kotlin` модуля; нет файла - уведомление);
-- правый клик по модулю/папке в Project view -> **Regenerate Previews**: один вызов
-  `./gradlew :module:kspAndroidMain` (plain-Android - `kspDebugKotlin`) от корня билда;
-  по завершении - уведомление (успех; при ошибке - последняя строка вывода gradle);
-  если файловые маркеры не определили таск (после clean, KMP-модуль без `src/androidMain`) -
-  запускаются селекторы `kspAndroidMain` + `kspDebugKotlin` от корня билда, Gradle сам
-  выполнит существующие и промотает неизменённое по up-to-date;
+- правый клик по модулю/папке в Project view -> **Regenerate Previews**: перегенерирует
+  только выбранный модуль (`./gradlew :module:kspAndroidMain` от корня его билда;
+  plain-Android - каскадом `kspDebugKotlin`, если `kspAndroidMain` в модуле нет);
+  соседние модули не запускаются; по завершении - уведомление (успех; при ошибке -
+  реальный блок "What went wrong" из вывода gradle); повторный клик во время выполнения
+  безопасен (single-flight, "уже выполняется");
 - правый клик (Project view/редактор) -> **Preview Coverage Report** - запускает отчёт покрытия
   (`previewCoverageReport`) и открывает результат в редакторе;
 - шорткаты: `Ctrl+Alt+P` - Regenerate Previews, `Ctrl+Alt+Shift+P` - Preview Coverage Report;

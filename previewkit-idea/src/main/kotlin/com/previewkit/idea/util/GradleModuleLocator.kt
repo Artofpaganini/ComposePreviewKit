@@ -4,6 +4,7 @@ import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.vfs.VirtualFile
 import java.io.File
@@ -11,15 +12,9 @@ import java.io.File
 internal object GradleModuleLocator {
 
     private const val TASK_KSP_ANDROID_MAIN: String = "kspAndroidMain"
-    private const val TASK_KSP_DEBUG_KOTLIN: String = "kspDebugKotlin"
 
     private const val SETTINGS_FILE: String = "settings.gradle"
     private const val SETTINGS_KTS_FILE: String = "settings.gradle.kts"
-
-    private val ANDROID_MARKERS: List<String> = listOf("src/androidMain", "build/generated/ksp/android/androidMain")
-    private val PLAIN_ANDROID_MARKERS: List<String> = listOf("src/debug", "build/generated/ksp/debug")
-
-    private val FALLBACK_TASKS: List<String> = listOf(TASK_KSP_ANDROID_MAIN, TASK_KSP_DEBUG_KOTLIN)
 
     fun selectedModules(project: Project, files: Array<VirtualFile>): List<Module> {
         return ReadAction.compute<List<Module>, RuntimeException> {
@@ -45,16 +40,10 @@ internal object GradleModuleLocator {
         val targets = linkedMapOf<String, MutableList<String>>()
         for (modulePath in modulePaths) {
             val buildRoot = buildRootOf(modulePath) ?: continue
-            val task = kspTaskOf(modulePath) ?: continue
             val gradlePath = gradlePathOf(buildRoot, modulePath) ?: continue
-            targets.getOrPut(buildRoot) { mutableListOf() } += "$gradlePath:$task"
+            targets.getOrPut(buildRoot) { mutableListOf() } += "$gradlePath:$TASK_KSP_ANDROID_MAIN"
         }
         return targets
-    }
-
-    fun buildFallbackTargets(project: Project, files: Array<VirtualFile>): Map<String, List<String>> {
-        val buildRoot = selectedBuildRoot(project, files) ?: return emptyMap()
-        return linkedMapOf(buildRoot to FALLBACK_TASKS.toList())
     }
 
     private fun matchesSelection(module: Module, files: Array<VirtualFile>): Boolean {
@@ -69,6 +58,8 @@ internal object GradleModuleLocator {
     }
 
     private fun modulePathOf(module: Module): String? {
+        val external = ExternalSystemApiUtil.getExternalProjectPath(module)
+        if (external != null) return external
         return ModuleRootManager.getInstance(module).contentRoots.firstOrNull()?.path
     }
 
@@ -92,13 +83,5 @@ internal object GradleModuleLocator {
         if (relative.startsWith("..")) return null
         if (relative.toString().isEmpty()) return ":"
         return ":" + relative.toString().replace(File.separatorChar, ':')
-    }
-
-    private fun kspTaskOf(modulePath: String): String? {
-        return when {
-            ANDROID_MARKERS.any { marker -> File(modulePath, marker).exists() } -> TASK_KSP_ANDROID_MAIN
-            PLAIN_ANDROID_MARKERS.any { marker -> File(modulePath, marker).exists() } -> TASK_KSP_DEBUG_KOTLIN
-            else -> null
-        }
     }
 }
