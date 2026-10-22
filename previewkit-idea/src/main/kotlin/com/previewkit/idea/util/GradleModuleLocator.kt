@@ -12,9 +12,16 @@ import java.io.File
 internal object GradleModuleLocator {
 
     private const val TASK_KSP_ANDROID_MAIN: String = "kspAndroidMain"
+    private const val ROOT_TASK_PATH: String = ":kspAndroidMain"
 
     private const val SETTINGS_FILE: String = "settings.gradle"
     private const val SETTINGS_KTS_FILE: String = "settings.gradle.kts"
+
+    private data class ModuleCandidate(
+        val buildRoot: String,
+        val gradlePath: String,
+        val rootPath: String,
+    )
 
     fun selectedModules(project: Project, files: Array<VirtualFile>): List<Module> {
         return ReadAction.compute<List<Module>, RuntimeException> {
@@ -33,23 +40,54 @@ internal object GradleModuleLocator {
         return buildRootOf(basePath)
     }
 
-    fun buildTargets(modules: List<Module>): Map<String, List<String>> {
-        val modulePaths = ReadAction.compute<List<String>, RuntimeException> {
-            modules.mapNotNull { module -> modulePathOf(module) }
+    fun buildTargets(project: Project, files: Array<VirtualFile>): Map<String, List<String>> {
+        return ReadAction.compute<Map<String, List<String>>, RuntimeException> {
+            val candidates = collectCandidates(project, files)
+            val dominant = candidates.filter { candidate -> isDominant(candidate, candidates) }
+            val targets = linkedMapOf<String, MutableList<String>>()
+            for (candidate in dominant) {
+                val taskPath = taskPathOf(candidate.gradlePath)
+                targets.getOrPut(candidate.buildRoot) { mutableListOf() } += taskPath
+            }
+            targets.forEach { (_, tasks) ->
+                if (tasks.size > 1) tasks.remove(ROOT_TASK_PATH)
+            }
+            targets
         }
-        val targets = linkedMapOf<String, MutableList<String>>()
-        val moduleTargets = modulePaths.mapNotNull { modulePath ->
-            val buildRoot = buildRootOf(modulePath) ?: return@mapNotNull null
-            val gradlePath = gradlePathOf(buildRoot, modulePath) ?: return@mapNotNull null
-            buildRoot to gradlePath
+    }
+
+    private fun collectCandidates(
+        project: Project,
+        files: Array<VirtualFile>,
+    ): List<ModuleCandidate> {
+        val candidates = mutableListOf<ModuleCandidate>()
+        for (module in ModuleManager.getInstance(project).modules.toList()) {
+            val modulePath = modulePathOf(module) ?: continue
+            val buildRoot = buildRootOf(modulePath) ?: continue
+            val gradlePath = gradlePathOf(buildRoot, modulePath) ?: continue
+            for (root in ModuleRootManager.getInstance(module).contentRoots) {
+                if (files.any { file -> relates(file.path, root.path) }) {
+                    candidates += ModuleCandidate(buildRoot, gradlePath, root.path)
+                    break
+                }
+            }
         }
-        val deepModules = moduleTargets.filter { (_, gradlePath) -> gradlePath != ":" }
-        val chosen = if (deepModules.isNotEmpty()) deepModules else moduleTargets
-        for ((buildRoot, gradlePath) in chosen) {
-            val taskPath = if (gradlePath == ":") ":$TASK_KSP_ANDROID_MAIN" else "$gradlePath:$TASK_KSP_ANDROID_MAIN"
-            targets.getOrPut(buildRoot) { mutableListOf() } += taskPath
+        return candidates
+    }
+
+    private fun isDominant(
+        candidate: ModuleCandidate,
+        candidates: List<ModuleCandidate>,
+    ): Boolean {
+        return candidates.none { other ->
+            other !== candidate &&
+                other.rootPath.length > candidate.rootPath.length &&
+                other.rootPath.startsWith(candidate.rootPath)
         }
-        return targets
+    }
+
+    private fun taskPathOf(gradlePath: String): String {
+        return if (gradlePath == ":") ":$TASK_KSP_ANDROID_MAIN" else "$gradlePath:$TASK_KSP_ANDROID_MAIN"
     }
 
     private fun matchesSelection(module: Module, files: Array<VirtualFile>): Boolean {
@@ -90,4 +128,6 @@ internal object GradleModuleLocator {
         if (relative.toString().isEmpty()) return ":"
         return ":" + relative.toString().replace(File.separatorChar, ':')
     }
+
+
 }

@@ -44,12 +44,8 @@ internal class RegeneratePreviewsAction : AnAction() {
     }
 
     private fun regenerate(project: Project, files: Array<VirtualFile>, indicator: ProgressIndicator) {
-        val modules = GradleModuleLocator.selectedModules(project, files)
-        val buildTargets = GradleModuleLocator.buildTargets(modules)
-        LOG.info(
-            "PreviewKit: regenerate files=${files.size} modules=${modules.size} " +
-                "targets=$buildTargets",
-        )
+        val buildTargets = GradleModuleLocator.buildTargets(project, files)
+        LOG.info("PreviewKit: regenerate files=${files.size} targets=$buildTargets")
         if (buildTargets.isEmpty()) {
             showWarning(project, NO_MODULES_MESSAGE)
             return
