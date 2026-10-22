@@ -38,10 +38,16 @@ internal object GradleModuleLocator {
             modules.mapNotNull { module -> modulePathOf(module) }
         }
         val targets = linkedMapOf<String, MutableList<String>>()
-        for (modulePath in modulePaths) {
-            val buildRoot = buildRootOf(modulePath) ?: continue
-            val gradlePath = gradlePathOf(buildRoot, modulePath) ?: continue
-            targets.getOrPut(buildRoot) { mutableListOf() } += "$gradlePath:$TASK_KSP_ANDROID_MAIN"
+        val moduleTargets = modulePaths.mapNotNull { modulePath ->
+            val buildRoot = buildRootOf(modulePath) ?: return@mapNotNull null
+            val gradlePath = gradlePathOf(buildRoot, modulePath) ?: return@mapNotNull null
+            buildRoot to gradlePath
+        }
+        val deepModules = moduleTargets.filter { (_, gradlePath) -> gradlePath != ":" }
+        val chosen = if (deepModules.isNotEmpty()) deepModules else moduleTargets
+        for ((buildRoot, gradlePath) in chosen) {
+            val taskPath = if (gradlePath == ":") ":$TASK_KSP_ANDROID_MAIN" else "$gradlePath:$TASK_KSP_ANDROID_MAIN"
+            targets.getOrPut(buildRoot) { mutableListOf() } += taskPath
         }
         return targets
     }
