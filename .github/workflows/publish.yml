@@ -4,8 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version (must match 0.1.0 until configured otherwise)"
-        required: false
+        description: "Release version (must match project version, e.g. 0.1.1)"
+        required: true
+        default: "0.1.1"
 
 jobs:
   publish:
@@ -30,13 +31,14 @@ jobs:
           CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
           CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
         run: |
+          VERSION="${{ github.event.inputs.version }}"
           ./gradlew :previewkit-gradle:publishToMavenLocal
           ROOT=~/.m2/repository
-          STAGE=/tmp/bundle/io/github/artofpaganini/previewkit-gradle/0.1.0
-          MARKER=/tmp/bundle/com/previewkit/com.previewkit.gradle.plugin/0.1.0
+          STAGE=/tmp/bundle/io/github/artofpaganini/previewkit-gradle/$VERSION
+          MARKER=/tmp/bundle/com/previewkit/com.previewkit.gradle.plugin/$VERSION
           mkdir -p "$STAGE" "$MARKER"
-          cp $ROOT/io/github/artofpaganini/previewkit-gradle/0.1.0/* "$STAGE"/
-          cp $ROOT/com/previewkit/com.previewkit.gradle.plugin/0.1.0/* "$MARKER"/
+          cp $ROOT/io/github/artofpaganini/previewkit-gradle/$VERSION/* "$STAGE"/
+          cp $ROOT/com/previewkit/com.previewkit.gradle.plugin/$VERSION/* "$MARKER"/
           cd /tmp/bundle
           zip -r ../previewkit-gradle-bundle.zip .
           CENTRAL_TOKEN="$(printf '%s:%s' "$CENTRAL_USERNAME" "$CENTRAL_PASSWORD" | base64 | tr -d '\n')"
