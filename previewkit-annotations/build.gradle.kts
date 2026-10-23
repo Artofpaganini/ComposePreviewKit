@@ -14,7 +14,7 @@ val DEVELOPER_ID = "artofpaganini"
 val DEVELOPER_NAME = "Viktar Dabrou"
 
     mavenPublishing {
-        coordinates("io.github.artofpaganini", "previewkit-annotations", "0.1.0")
+        coordinates("io.github.artofpaganini", "previewkit-annotations", version.toString())
         publishToMavenCentral(automaticRelease = true)
         pom {
             name = "PreviewKit Annotations"
