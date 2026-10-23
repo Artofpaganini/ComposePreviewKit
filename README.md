@@ -32,7 +32,7 @@ plugins {
     id("org.jetbrains.kotlin.multiplatform") version "..."
     id("org.jetbrains.kotlin.plugin.compose") version "..."
     id("org.jetbrains.compose") version "..."
-    id("com.previewkit") version "0.1.0"
+    id("com.previewkit") version "0.1.1"
 }
 
 import com.previewkit.gradle.PreviewToolkitExtension
@@ -112,7 +112,7 @@ Android-ресурс-Int'ы (`@DrawableRes`/`@StringRes`/`@ColorRes`) получ
 ## Режимы
 
 - `previewkit.strict=true` — неподдерживаемый тип параметра становится ошибкой сборки
-  вместо заглушки; разово погасить на уровень ниже.
+  вместо заглушки; заглушки в этом режиме не применяются.
 - `previewkit.unsupportedStub` (включён по умолчанию; отключение —
   `previewkit.unsupportedStub=false`) — обёртка генерируется, а для неподдерживаемого
   обязательного параметра ставится заглушка `TODO(...)` вместо пропуска всей обёртки;
@@ -140,6 +140,9 @@ IDE-плагин по манифесту, а не только warn в KSP-ло�
   пишется руками;
 - cross-module тип с internal-конструктором (видимость Kotlin);
 - неразрешимый вложенный тип.
+
+Граф моделей собирается на глубину 15: типы глубже фабрик не получают — параметр
+с таким типом превратится в заглушку и попадёт в манифест.
 
 - рендер превью — только Android (Android Studio); iOS generated-код не видит.
 
