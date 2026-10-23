@@ -12,3 +12,6 @@ local.properties
 # IDE
 *.iml
 .idea/
+
+# OS
+.DS_Store
